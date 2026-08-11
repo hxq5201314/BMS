@@ -105,6 +105,12 @@
     <Compile Include="Data.cs" />
     <Compile Include="FormHelper.cs" />
     <Compile Include="BookGridBinder.cs" />
+    <Compile Include="Interface\User\AddUser.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Interface\User\AddUser.Designer.cs">
+      <DependentUpon>AddUser.cs</DependentUpon>
+    </Compile>
     <Compile Include="Models\Book.cs" />
     <Compile Include="Models\BorrowRecord.cs" />
     <Compile Include="Services\AuthService.cs" />
@@ -163,6 +169,9 @@
     </EmbeddedResource>
     <EmbeddedResource Include="Interface\LoginInterface.resx">
       <DependentUpon>LoginInterface.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Interface\User\AddUser.resx">
+      <DependentUpon>AddUser.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Interface\User\SeeBook.resx">
       <DependentUpon>SeeBook.cs</DependentUpon>

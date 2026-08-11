@@ -129,6 +129,42 @@ namespace BookMS
             }
         }
 
+        /// <summary>
+        /// 在一个数据库连接 + 事务中顺序执行多个写入操作。
+        /// 全部成功则 Commit；worker 抛任何异常则 Rollback 并原样抛出。
+        /// 用于需要跨多条 SQL 保持一致性的场景（借阅/归还：UPDATE books + INSERT/UPDATE borrow_records）
+        /// </summary>
+        /// <param name="worker">
+        /// 使用者在委托内拿到已打开的 conn 和已开启的 tran，用它们构造 MySqlCommand(sql, conn, tran)
+        /// 并调用 ExecuteNonQueryAsync / ExecuteReaderAsync。委托的返回值即本方法的返回值。
+        /// </param>
+        public async Task<T> RunInTransactionAsync<T>(Func<MySqlConnection, MySqlTransaction, Task<T>> worker)
+        {
+            if (worker == null) throw new ArgumentNullException(nameof(worker));
+
+            using (var conn = new MySqlConnection(ConnectionString))
+            {
+                await conn.OpenAsync();
+                var tran = conn.BeginTransaction();
+                try
+                {
+                    T result = await worker(conn, tran);
+                    tran.Commit();
+                    return result;
+                }
+                catch
+                {
+                    // 回滚本身失败时不要吞掉原始异常（上层要知道业务操作失败）
+                    try { tran.Rollback(); } catch { /* best-effort */ }
+                    throw;
+                }
+                finally
+                {
+                    tran.Dispose();
+                }
+            }
+        }
+
         #endregion
     }
 }

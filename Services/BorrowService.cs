@@ -45,51 +45,59 @@ CREATE TABLE IF NOT EXISTS borrow_records (
         }
 
         /// <summary>
-        /// 借阅图书：去重检查 → 减库存 → 插记录。
-        /// 失败情况：未选中行 / 库存不足 / 已借过未还
+        /// 借阅图书：去重检查（同事务内 SELECT ... FOR UPDATE 行锁防并发）→ 减库存 → 插记录。
+        /// 三条 SQL 共用连接 + 事务，任意一步异常整批回滚，进程崩溃也不会残留半写数据。
+        /// 失败情况：账号无效 / 库存不足 / 已借过未还 / DB 写失败
         /// </summary>
         public async Task<BorrowResult> BorrowAsync(string userId, int bookId)
         {
+            // 输入校验（在事务外快速失败，避免占用连接）
+            if (string.IsNullOrWhiteSpace(userId))
+                return BorrowResult.Fail("账号信息无效，请确认后再操作");
+            if (bookId <= 0)
+                return BorrowResult.Fail("图书编号无效");
+
             try
             {
-                // 1. 去重检查：同一用户同一本书是否已借未还
-                if (await IsBorrowingAsync(userId, bookId))
+                return await _dao.RunInTransactionAsync(async (conn, tran) =>
                 {
-                    return BorrowResult.Fail("您已借阅此书且尚未归还，无法重复借阅");
-                }
-
-                // 2. 减库存：WHERE Remain > 0 防止超借（并发安全由数据库行锁保证）
-                const string decreaseSql = "UPDATE books SET Remain = Remain - 1 WHERE BookID = @id AND Remain > 0";
-                int affected = await _dao.ExecuteNonQueryAsync(decreaseSql,
-                    new[] { new MySqlParameter("@id", bookId) });
-
-                if (affected == 0)
-                {
-                    return BorrowResult.Fail("库存不足，借阅失败");
-                }
-
-                // 3. 插借阅记录；若失败需回滚库存（保持一致性）
-                const string insertSql = @"INSERT INTO borrow_records (user_id, book_id, borrow_date, status)
-                                           VALUES (@uid, @bid, @date, '借阅中')";
-                try
-                {
-                    await _dao.ExecuteNonQueryAsync(insertSql, new[]
+                    // 1. 去重检查：SELECT ... FOR UPDATE 锁住命中行，避免并发下重复插入"借阅中"记录
+                    const string checkSql = @"SELECT COUNT(*) FROM borrow_records
+                                              WHERE user_id = @uid AND book_id = @bid AND status = '借阅中'
+                                              FOR UPDATE";
+                    using (var checkCmd = new MySqlCommand(checkSql, conn, tran))
                     {
-                        new MySqlParameter("@uid", userId),
-                        new MySqlParameter("@bid", bookId),
-                        new MySqlParameter("@date", DateTime.Now)
-                    });
-                }
-                catch (MySqlException)
-                {
-                    // 插记录失败 → 回滚库存
-                    const string rollbackSql = "UPDATE books SET Remain = Remain + 1 WHERE BookID = @id";
-                    await _dao.ExecuteNonQueryAsync(rollbackSql,
-                        new[] { new MySqlParameter("@id", bookId) });
-                    throw;
-                }
+                        checkCmd.Parameters.AddWithValue("@uid", userId);
+                        checkCmd.Parameters.AddWithValue("@bid", bookId);
+                        int existing = Convert.ToInt32(await checkCmd.ExecuteScalarAsync());
+                        if (existing > 0)
+                            return BorrowResult.Fail("您已借阅此书且尚未归还，无法重复借阅");
+                    }
 
-                return BorrowResult.Ok();
+                    // 2. 减库存：WHERE Remain > 0 + 行锁防止超借
+                    const string decreaseSql = "UPDATE books SET Remain = Remain - 1 WHERE BookID = @id AND Remain > 0";
+                    int affected;
+                    using (var decCmd = new MySqlCommand(decreaseSql, conn, tran))
+                    {
+                        decCmd.Parameters.AddWithValue("@id", bookId);
+                        affected = await decCmd.ExecuteNonQueryAsync();
+                    }
+                    if (affected == 0)
+                        return BorrowResult.Fail("库存不足，借阅失败");
+
+                    // 3. 插借阅记录（和前两步同一事务，失败时由 RunInTransactionAsync 自动 Rollback，库存一起恢复）
+                    const string insertSql = @"INSERT INTO borrow_records (user_id, book_id, borrow_date, status)
+                                               VALUES (@uid, @bid, @date, '借阅中')";
+                    using (var insCmd = new MySqlCommand(insertSql, conn, tran))
+                    {
+                        insCmd.Parameters.AddWithValue("@uid", userId);
+                        insCmd.Parameters.AddWithValue("@bid", bookId);
+                        insCmd.Parameters.AddWithValue("@date", DateTime.Now);
+                        await insCmd.ExecuteNonQueryAsync();
+                    }
+
+                    return BorrowResult.Ok();
+                });
             }
             catch (MySqlException ex)
             {
@@ -102,6 +110,9 @@ CREATE TABLE IF NOT EXISTS borrow_records (
         /// </summary>
         public async Task<int> GetBorrowingCountAsync(string userId)
         {
+            if (string.IsNullOrWhiteSpace(userId))
+                throw new ServiceException("账号信息无效，无法查询借阅数量");
+
             try
             {
                 const string sql = "SELECT COUNT(*) FROM borrow_records WHERE user_id = @uid AND status = '借阅中'";
@@ -120,6 +131,9 @@ CREATE TABLE IF NOT EXISTS borrow_records (
         /// </summary>
         public async Task<List<BorrowRecord>> GetBorrowingAsync(string userId)
         {
+            if (string.IsNullOrWhiteSpace(userId))
+                throw new ServiceException("账号信息无效，无法查询借阅记录");
+
             try
             {
                 const string sql = @"
@@ -155,52 +169,48 @@ ORDER BY br.borrow_date DESC";
         }
 
         /// <summary>
-        /// 归还图书：定位状态为"借阅中"的记录 → 标记为已归还并填写归还时间 → books.Remain + 1
-        /// 失败情况：记录不存在 / 已归还 / DB 写失败（自动回滚状态）
+        /// 归还图书：定位"借阅中"记录 → 标记为已归还并填归还时间 → books.Remain + 1
+        /// 两步 SQL 共用连接 + 事务，任意异常整批回滚，数据绝对一致。
+        /// 失败情况：账号无效 / 图书编号无效 / 记录不存在或已归还 / DB 写失败
         /// </summary>
         public async Task<BorrowResult> ReturnBookAsync(string userId, int bookId)
         {
+            if (string.IsNullOrWhiteSpace(userId))
+                return BorrowResult.Fail("账号信息无效，请确认后再操作");
+            if (bookId <= 0)
+                return BorrowResult.Fail("图书编号无效");
+
             try
             {
-                // 1. 关闭借阅记录：改状态+填归还时间；WHERE status='借阅中' 确保不会误改已归还的记录
-                const string closeRecordSql = @"UPDATE borrow_records
-                                                SET status = '已归还', return_date = @rdate
-                                                WHERE user_id = @uid AND book_id = @bid AND status = '借阅中'";
                 DateTime now = DateTime.Now;
-                int closed = await _dao.ExecuteNonQueryAsync(closeRecordSql, new[]
+                return await _dao.RunInTransactionAsync(async (conn, tran) =>
                 {
-                    new MySqlParameter("@uid", userId),
-                    new MySqlParameter("@bid", bookId),
-                    new MySqlParameter("@rdate", now)
-                });
-
-                if (closed == 0)
-                    return BorrowResult.Fail("没有找到您借阅中的该书记录，可能已归还或未借阅");
-
-                // 2. 恢复库存：books.Remain = Remain + 1
-                try
-                {
-                    const string restoreStockSql = "UPDATE books SET Remain = Remain + 1 WHERE BookID = @id";
-                    await _dao.ExecuteNonQueryAsync(restoreStockSql,
-                        new[] { new MySqlParameter("@id", bookId) });
-                }
-                catch (MySqlException)
-                {
-                    // 库存恢复失败 → 回滚借阅记录（撤销"已归还"），保持数据一致
-                    const string rollbackSql = @"UPDATE borrow_records
-                                                 SET status = '借阅中', return_date = NULL
-                                                 WHERE user_id = @uid AND book_id = @bid AND status = '已归还'
-                                                   AND return_date = @rdate";
-                    await _dao.ExecuteNonQueryAsync(rollbackSql, new[]
+                    // 1. 关闭借阅记录：改状态+填归还时间；WHERE status='借阅中' + FOR UPDATE 防并发双重归还
+                    const string closeRecordSql = @"UPDATE borrow_records
+                                                    SET status = '已归还', return_date = @rdate
+                                                    WHERE user_id = @uid AND book_id = @bid AND status = '借阅中'
+                                                    LIMIT 1";
+                    int closed;
+                    using (var closeCmd = new MySqlCommand(closeRecordSql, conn, tran))
                     {
-                        new MySqlParameter("@uid", userId),
-                        new MySqlParameter("@bid", bookId),
-                        new MySqlParameter("@rdate", now)
-                    });
-                    throw;
-                }
+                        closeCmd.Parameters.AddWithValue("@uid", userId);
+                        closeCmd.Parameters.AddWithValue("@bid", bookId);
+                        closeCmd.Parameters.AddWithValue("@rdate", now);
+                        closed = await closeCmd.ExecuteNonQueryAsync();
+                    }
+                    if (closed == 0)
+                        return BorrowResult.Fail("没有找到您借阅中的该书记录，可能已归还或未借阅");
 
-                return BorrowResult.Returned();
+                    // 2. 恢复库存：books.Remain = Remain + 1
+                    const string restoreStockSql = "UPDATE books SET Remain = Remain + 1 WHERE BookID = @id";
+                    using (var restoreCmd = new MySqlCommand(restoreStockSql, conn, tran))
+                    {
+                        restoreCmd.Parameters.AddWithValue("@id", bookId);
+                        await restoreCmd.ExecuteNonQueryAsync();
+                    }
+
+                    return BorrowResult.Returned();
+                });
             }
             catch (MySqlException ex)
             {

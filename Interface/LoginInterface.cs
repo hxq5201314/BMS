@@ -1,3 +1,4 @@
+using BMS.Interface.User;
 using BMS.Services;
 using System;
 using System.Threading.Tasks;
@@ -13,6 +14,7 @@ namespace BMS
         {
             InitializeComponent();
             this.AcceptButton = button1;  // button1 登录按钮
+            this.Text = "图书管理系统 - 登录";
         }
 
         private async void Button1_Click(object sender, EventArgs e)
@@ -62,10 +64,30 @@ namespace BMS
             }
         }
 
-        private void Button2_Click(object sender, EventArgs e)
+        /// <summary>
+        /// 用户注册按钮：隐藏登录页 → 模态打开 AddUser → 注册成功时把用户名回填到登录界面 → 重现登录页
+        /// </summary>
+        private async void Button2_Click(object sender, EventArgs e)
         {
-            textBox1.Text = "";
-            textBox2.Text = "";
+            AddUser addUserForm = null;
+            await FormHelper.ShowModal(
+                owner: this,
+                createChild: () => { addUserForm = new AddUser(); return addUserForm; },
+                onReturn: () =>
+                {
+                    // onReturn 在 child.Dispose 之前调用（FormHelper 时序修复后保证安全），
+                    // 可以安全读取 AddUser 的公共属性
+                    if (addUserForm != null && addUserForm.RegisteredSuccess && !string.IsNullOrEmpty(addUserForm.RegisteredUserName))
+                    {
+                        // 自动回填用户名，用户只需输入密码即可登录（同时默认选"用户"单选框，因为注册默认都是普通用户）
+                        textBox1.Text = addUserForm.RegisteredUserName;
+                        radioButtonUser.Checked = true;
+                        textBox2.SelectAll();
+                        textBox2.Focus();
+                    }
+                },
+                errorTitle: "打开注册界面"
+            );
         }
     }
 }

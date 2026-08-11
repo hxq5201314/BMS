@@ -45,11 +45,15 @@ namespace BMS
         {
             // 菜单名由 Designer.cs 生成：系统ToolStripMenuItem 下包含 退出ToolStripMenuItem
             var exitItem = FindMenuItemByName(menuStrip1.Items, "退出ToolStripMenuItem");
-            if (exitItem != null)
+            if (exitItem == null)
             {
-                exitItem.Click -= 退出ToolStripMenuItem_Click;
-                exitItem.Click += 退出ToolStripMenuItem_Click;
+                string msg = "初始化失败：未找到菜单\"系统 → 退出\"，退出登录功能无法使用。" +
+                             Environment.NewLine + "请确认 User1.Designer.cs 中菜单项名称\"退出ToolStripMenuItem\"是否被重命名。";
+                MessageBox.Show(msg, "菜单初始化失败", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
             }
+            exitItem.Click -= 退出ToolStripMenuItem_Click;
+            exitItem.Click += 退出ToolStripMenuItem_Click;
         }
 
         /// <summary>
@@ -63,7 +67,13 @@ namespace BMS
             if (returnItem == null)
             {
                 var parent = FindMenuItemByName(menuStrip1.Items, "借阅信息ToolStripMenuItem");
-                if (parent == null) return;
+                if (parent == null)
+                {
+                    string msg = "初始化失败：未找到\"借阅信息\"主菜单，归还图书功能无法加载。" +
+                                 Environment.NewLine + "请确认 User1.Designer.cs 中菜单项名称\"借阅信息ToolStripMenuItem\"是否被重命名。";
+                    MessageBox.Show(msg, "菜单初始化失败", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
 
                 var borrowItem = FindMenuItemByName(menuStrip1.Items, "借阅ToolStripMenuItem");
                 int insertIdx = borrowItem != null
@@ -79,30 +89,91 @@ namespace BMS
         }
 
         /// <summary>
-        /// 轻量输入对话框：替代 Microsoft.VisualBasic.Interaction.InputBox，不额外加程序集引用
+        /// 轻量输入对话框：替代 Microsoft.VisualBasic.Interaction.InputBox，不额外加程序集引用。
+        /// contentAbove：可选，显示在输入框上方的多行说明文本（例如归还时的"正在借阅图书清单"）。
+        /// owner：模态归属，居中到指定窗体，避免弹窗跑到屏幕角落或被主窗口遮挡。
         /// </summary>
         /// <returns>用户输入的字符串；取消或关闭返回 null</returns>
-        private static string ShowInputDialog(string title, string prompt, string defaultValue = "")
+        private static string ShowInputDialog(
+            IWin32Window owner,
+            string title,
+            string prompt,
+            string contentAbove = null,
+            string defaultValue = "")
         {
             using (var form = new Form())
-            using (var lbl = new Label { AutoSize = true, Left = 12, Top = 15, Text = prompt })
-            using (var txt = new TextBox { Left = 12, Top = 40, Width = 320, Text = defaultValue })
-            using (var okBtn = new Button { Text = "确定", Left = 150, Width = 80, Height = 30, DialogResult = DialogResult.OK })
-            using (var cancelBtn = new Button { Text = "取消", Left = 252, Width = 80, Height = 30, DialogResult = DialogResult.Cancel })
+            using (var okBtn = new Button { Text = "确定", Width = 80, Height = 30, DialogResult = DialogResult.OK })
+            using (var cancelBtn = new Button { Text = "取消", Width = 80, Height = 30, DialogResult = DialogResult.Cancel })
             {
-                okBtn.Top = cancelBtn.Top = 72;
+                const int LeftMargin = 12;
+                const int MinClientWidth = 344;
+                int cursorTop = 15;
+                int clientWidth = MinClientWidth;
 
+                // 上方多行说明文本（先添加以计算后续控件 Y 坐标）
+                Label contentLbl = null;
+                if (!string.IsNullOrEmpty(contentAbove))
+                {
+                    contentLbl = new Label
+                    {
+                        AutoSize = false,
+                        Left = LeftMargin,
+                        Top = cursorTop,
+                        Width = clientWidth - LeftMargin * 2,
+                        Text = contentAbove
+                    };
+                    // 自动高度：先设大一点再用 PreferredSize 真实测量
+                    contentLbl.Height = 500;
+                    Size pref = contentLbl.PreferredSize;
+                    contentLbl.Height = Math.Max(pref.Height, 20);
+                    form.Controls.Add(contentLbl);
+                    cursorTop = contentLbl.Bottom + 10;
+                }
+
+                // 输入提示（prompt）
+                var lbl = new Label
+                {
+                    AutoSize = true,
+                    Left = LeftMargin,
+                    Top = cursorTop,
+                    Text = prompt
+                };
+                form.Controls.Add(lbl);
+                cursorTop = lbl.Bottom + 6;
+
+                // 输入框
+                var txt = new TextBox
+                {
+                    Left = LeftMargin,
+                    Top = cursorTop,
+                    Width = clientWidth - LeftMargin * 2,
+                    Text = defaultValue
+                };
+                form.Controls.Add(txt);
+                cursorTop = txt.Bottom + 12;
+
+                // 按钮
+                cancelBtn.Left = clientWidth - LeftMargin - cancelBtn.Width;
+                okBtn.Left = cancelBtn.Left - 8 - okBtn.Width;
+                okBtn.Top = cancelBtn.Top = cursorTop;
+                form.Controls.AddRange(new Control[] { okBtn, cancelBtn });
+
+                int clientHeight = cancelBtn.Bottom + 12;
                 form.Text = title;
                 form.StartPosition = FormStartPosition.CenterParent;
                 form.FormBorderStyle = FormBorderStyle.FixedDialog;
                 form.MaximizeBox = false;
                 form.MinimizeBox = false;
-                form.ClientSize = new Size(344, 118);
-                form.Controls.AddRange(new Control[] { lbl, txt, okBtn, cancelBtn });
+                form.ClientSize = new Size(clientWidth, clientHeight);
                 form.AcceptButton = okBtn;
                 form.CancelButton = cancelBtn;
 
-                return form.ShowDialog() == DialogResult.OK ? txt.Text : null;
+                if (contentLbl != null) { contentLbl.Dispose(); }
+                lbl.Dispose();
+                txt.Dispose();
+
+                IWin32Window ownerActual = owner ?? Form.ActiveForm;
+                return form.ShowDialog(ownerActual) == DialogResult.OK ? txt.Text : null;
             }
         }
 
@@ -365,10 +436,10 @@ namespace BMS
                 return;
             }
 
-            // 2. 拼装借阅中图书预览 + 序号
+            // 2. 拼装借阅中图书预览 + 序号 → 合并到同一个 ShowInputDialog 的 contentAbove，减少弹窗数量
             var sb = new StringBuilder();
-            sb.AppendLine("请输入要归还的图书序号：");
-            sb.AppendLine(new string('-', 30));
+            sb.AppendLine("当前正在借阅的图书清单：");
+            sb.AppendLine(new string('-', 32));
             for (int i = 0; i < records.Count; i++)
             {
                 BorrowRecord r = records[i];
@@ -376,11 +447,13 @@ namespace BMS
                 sb.AppendLine($"   书码：{r.BookIsbn}");
                 sb.AppendLine($"   借阅时间：{r.BorrowDate:yyyy-MM-dd HH:mm}");
             }
-            // 先弹一次提示让用户看清列表，再弹 InputBox（InputBox 没有多行提示区域）
-            MessageBox.Show(sb.ToString(), "归还图书 - 选择要归还的序号",
-                MessageBoxButtons.OK, MessageBoxIcon.Information);
 
-            string input = ShowInputDialog("归还图书", "请输入序号（从 1 开始）：", "1");
+            string input = ShowInputDialog(
+                owner: this,
+                title: "归还图书",
+                prompt: $"请输入要归还的图书序号（1 ~ {records.Count}）：",
+                contentAbove: sb.ToString(),
+                defaultValue: "1");
             if (input == null) return; // 用户取消
 
             if (!int.TryParse(input, out int idx) || idx < 1 || idx > records.Count)
@@ -392,11 +465,11 @@ namespace BMS
 
             BorrowRecord selected = records[idx - 1];
 
-            // 3. 快照 + 二次确认
-            int countBefore = 0;
-            int remainBefore = 0;
-            try { countBefore = await _borrowService.GetBorrowingCountAsync(Data.UID); } catch { /* 忽略，仅影响显示 */ }
-            try { remainBefore = (await _bookService.GetBookRemainAsync(selected.BookId)) ?? 0; } catch { /* 忽略 */ }
+            // 3. 快照 + 二次确认（快照失败时记为 null，显示时标注"查询失败"，不再写死假 0）
+            int? countBefore = null;
+            int? remainBefore = null;
+            try { countBefore = await _borrowService.GetBorrowingCountAsync(Data.UID); } catch { /* 留 null，显示时标注查询失败 */ }
+            try { remainBefore = await _bookService.GetBookRemainAsync(selected.BookId); } catch { /* 留 null */ }
 
             DialogResult dr = MessageBox.Show(
                 $"确认归还《{selected.BookTitle}》？",
@@ -411,17 +484,30 @@ namespace BMS
                 BorrowResult result = await _borrowService.ReturnBookAsync(Data.UID, selected.BookId);
                 if (result.Success)
                 {
-                    int countAfter = 0;
-                    int remainAfter = 0;
-                    try { countAfter = await _borrowService.GetBorrowingCountAsync(Data.UID); } catch { /* 忽略 */ }
-                    try { remainAfter = (await _bookService.GetBookRemainAsync(selected.BookId)) ?? 0; } catch { /* 忽略 */ }
+                    int? countAfter = null;
+                    int? remainAfter = null;
+                    try { countAfter = await _borrowService.GetBorrowingCountAsync(Data.UID); } catch { /* 留 null */ }
+                    try { remainAfter = await _bookService.GetBookRemainAsync(selected.BookId); } catch { /* 留 null */ }
+
+                    string FormatDelta(int? before, int? after, string label, out bool hasDeltaError)
+                    {
+                        hasDeltaError = before == null || after == null;
+                        if (hasDeltaError)
+                            return $"{label}：查询失败";
+                        int d = after.Value - before.Value;
+                        string deltaStr = (d >= 0 ? "+" : "") + d;
+                        return $"{label}：{before.Value} → {after.Value}（{deltaStr}）";
+                    }
+
+                    string remainLine = FormatDelta(remainBefore, remainAfter, "剩余可借库存", out bool _);
+                    string countLine  = FormatDelta(countBefore,  countAfter,  "您正在借阅的图书", out bool __);
 
                     var summary = new StringBuilder();
                     summary.AppendLine("归还成功！");
                     summary.AppendLine();
                     summary.AppendLine($"书名：《{selected.BookTitle}》");
-                    summary.AppendLine($"剩余可借库存：{remainBefore} → {remainAfter}（+{remainAfter - remainBefore}）");
-                    summary.Append($"您正在借阅的图书：{countBefore} → {countAfter}（{countAfter - countBefore}）");
+                    summary.AppendLine(remainLine);
+                    summary.Append(countLine);
 
                     MessageBox.Show(summary.ToString(), "归还结果",
                         MessageBoxButtons.OK, MessageBoxIcon.Information);

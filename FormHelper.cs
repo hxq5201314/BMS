@@ -39,26 +39,25 @@ namespace BMS
             catch (Exception ex)
             {
                 MessageBox.Show($"{errorTitle}失败: {ex.Message}", "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                child?.Dispose();
                 if (!owner.IsDisposed) owner.Show();
                 return;
             }
-            finally
+
+            // 子窗体正常关闭后先执行回调（此时 child 还未 Disposed，owner 也未 Disposed）。
+            // 之前先 Dispose 再回调 → 嵌套 ShowModal 场景下，外层回调会访问到被父层 finally 提前 Dispose 的窗体。
+            // 顺序调整：回调执行完成 → Dispose child → 恢复 owner 显示
+            if (!owner.IsDisposed)
             {
-                child?.Dispose();
+                if (onReturnAsync != null)
+                {
+                    try { await onReturnAsync(); }
+                    catch (Exception ex) { MessageBox.Show($"{errorTitle}后回调失败: {ex.Message}", "错误", MessageBoxButtons.OK, MessageBoxIcon.Error); }
+                }
+                onReturn?.Invoke();
             }
 
-            // 子窗体正常关闭后执行回调（先异步，再同步）
-            // 注意：owner 可能已在嵌套 ShowDialog / 关闭父窗体 / Disposed 事件中被释放，
-            // 必须先检查 IsDisposed 再调用回调或 Show，否则抛 ObjectDisposedException
-            if (owner.IsDisposed) return;
-
-            if (onReturnAsync != null)
-            {
-                try { await onReturnAsync(); }
-                catch (Exception ex) { MessageBox.Show($"{errorTitle}后回调失败: {ex.Message}", "错误", MessageBoxButtons.OK, MessageBoxIcon.Error); }
-            }
-            onReturn?.Invoke();
-
+            child?.Dispose();
             if (!owner.IsDisposed) owner.Show();
         }
     }
