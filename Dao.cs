@@ -1,5 +1,6 @@
 using MySql.Data.MySqlClient;
 using System;
+using System.Configuration;
 using System.Data;
 using System.Threading.Tasks;
 
@@ -8,12 +9,52 @@ namespace BookMS
     /// <summary>
     /// 数据访问层：统一封装所有数据库操作，避免重复代码。
     /// 提供同步 + 异步两套 API，UI 层优先使用异步方法避免阻塞 UI 线程。
+    /// ────────────────────────────────────────────────────────────────────
+    /// 连接字符串来源：
+    ///   优先从 App.config 的 <connectionStrings> 节点读取（name = "BookDb"）。
+    ///   这样部署时只需改 .config，无需重新编译。
+    ///   如果 .config 没有配置，会回退到 DefaultConnectionString（仅作兜底，不推荐）。
     /// </summary>
     class Dao
     {
-        // 唯一的连接字符串定义点（全项目仅此一处）
-        private static readonly string ConnectionString =
-            "server=localhost;port=3306;database=BookDB;user=root;password=1111;";
+        /// <summary>
+        /// 兜底连接串：仅当 App.config 忘记配置时使用，避免程序直接崩。
+        /// 生产环境务必在 App.config 中配置，不要依赖这个默认值。
+        /// </summary>
+        private const string DefaultConnectionString =
+            "server=localhost;port=3306;database=BookDB;user id=root;password=1111;";
+
+        /// <summary>
+        /// 从 App.config 读取连接字符串（<connectionStrings name="BookDb">）。
+        /// 读取失败则回退到 DefaultConnectionString，并通过 Debug 打印提示。
+        /// 为什么用 Lazy<T>：静态字段延迟到第一次访问才初始化，
+        /// 避免静态构造阶段抛异常导致整个类型加载失败（难调试）。
+        /// </summary>
+        private static readonly Lazy<string> _connectionString = new Lazy<string>(() =>
+        {
+            try
+            {
+                // System.Configuration.ConfigurationManager 需要在项目中引用
+                // System.Configuration 程序集（本项目 BMS.csproj 已引用）
+                ConnectionStringSettings setting = ConfigurationManager.ConnectionStrings["BookDb"];
+
+                if (setting != null && !string.IsNullOrWhiteSpace(setting.ConnectionString))
+                    return setting.ConnectionString;
+            }
+            catch (ConfigurationErrorsException)
+            {
+                // App.config 格式错误时，ConfigurationManager 会抛这个异常
+                // 这里不抛出，让兜底连接串生效，至少能看到报错而非直接崩溃
+            }
+
+            // 走到这里说明 .config 没配好
+            return DefaultConnectionString;
+        });
+
+        /// <summary>
+        /// 当前实际使用的数据库连接字符串（只读属性，对外暴露读取路径）
+        /// </summary>
+        private static string ConnectionString => _connectionString.Value;
 
         /// <summary>
         /// 执行增删改（无参数，已弃用：优先使用带参数的 ExecuteNonQuery）
