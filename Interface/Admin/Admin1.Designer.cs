@@ -33,6 +33,7 @@
             this.图书管理ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.帮助ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.label1 = new System.Windows.Forms.Label();
+            this.退出登录ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.menuStrip1.SuspendLayout();
             this.SuspendLayout();
             // 
@@ -52,6 +53,8 @@
             // 
             // 系统ToolStripMenuItem
             // 
+            this.系统ToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.退出登录ToolStripMenuItem});
             this.系统ToolStripMenuItem.Name = "系统ToolStripMenuItem";
             this.系统ToolStripMenuItem.Size = new System.Drawing.Size(62, 28);
             this.系统ToolStripMenuItem.Text = "系统";
@@ -79,6 +82,13 @@
             this.label1.Text = "欢迎管理员";
             this.label1.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             // 
+            // 退出登录ToolStripMenuItem
+            // 
+            this.退出登录ToolStripMenuItem.Name = "退出登录ToolStripMenuItem";
+            this.退出登录ToolStripMenuItem.Size = new System.Drawing.Size(270, 34);
+            this.退出登录ToolStripMenuItem.Text = "退出登录";
+            this.退出登录ToolStripMenuItem.Click += new System.EventHandler(this.退出登录ToolStripMenuItem_Click);
+            // 
             // Admin1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(9F, 18F);
@@ -105,5 +115,6 @@
         private System.Windows.Forms.ToolStripMenuItem 图书管理ToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem 帮助ToolStripMenuItem;
         private System.Windows.Forms.Label label1;
+        private System.Windows.Forms.ToolStripMenuItem 退出登录ToolStripMenuItem;
     }
 }

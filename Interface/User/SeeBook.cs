@@ -1,84 +1,65 @@
-using BookMS;
+using BMS.Models;
+using BMS.Services;
 using System;
-using System.Data;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace BMS.Interface.User
 {
     public partial class SeeBook : Form
     {
-        private readonly Dao _dao = new Dao();
+        private readonly BookService _bookService = new BookService();
 
         /// <summary>
-        /// 无参构造：加载全部图书（用户直接打开 SeeBook 浏览全部时使用）
+        /// 无参构造：异步加载全部图书
         /// </summary>
         public SeeBook()
         {
             InitializeComponent();
-            LoadAllBooks();
+            this.Load += SeeBook_Load;
         }
 
         /// <summary>
-        /// 带参构造：注入一本图书的7个字段，在 DataGridView 中仅显示该本详情
+        /// Load 事件中异步加载数据（构造函数中不建议 await）
         /// </summary>
-        public SeeBook(int bookId, string isbn, string title, string author, string publisher, int total, int remain)
+        private async void SeeBook_Load(object sender, EventArgs e)
+        {
+            // 无参构造 → 加载全部；带参构造 → DataSource 已在构造中设置
+            if (dataGridView1.DataSource == null)
+            {
+                await LoadAllBooksAsync();
+            }
+        }
+
+        /// <summary>
+        /// 带参构造：注入一本图书实体，在 DataGridView 中仅显示该本详情（只读）
+        /// </summary>
+        public SeeBook(Book book)
         {
             InitializeComponent();
-
-            // 构建只含这一本的 DataTable，列名与 Admin2 统一（ID / 书码 / 书名 / 作者 / 来源 / 库存 / 剩余）
-            DataTable dt = CreateBookSchemaTable();
-            DataRow row = dt.NewRow();
-            row["ID"]      = bookId;
-            row["书码"]    = isbn;
-            row["书名"]    = title;
-            row["作者"]    = author;
-            row["来源"]    = publisher;
-            row["库存"]    = total;
-            row["剩余"]    = remain;
-            dt.Rows.Add(row);
-
-            dataGridView1.DataSource = dt;
-            dataGridView1.AutoResizeColumns(DataGridViewAutoSizeColumnsMode.AllCells);
-
-            // 只读模式，用户无法改
-            dataGridView1.ReadOnly = true;
-            dataGridView1.AllowUserToAddRows = false;
-            dataGridView1.AllowUserToDeleteRows = false;
+            this.Load += SeeBook_Load;
+            BookGridBinder.Bind(dataGridView1, new List<Book> { book }, readOnly: true);
         }
 
         /// <summary>
-        /// 查库加载全部图书（无参构造路径）
+        /// 通过业务层异步加载全部图书（只读模式）
         /// </summary>
-        private void LoadAllBooks()
+        private async Task LoadAllBooksAsync()
         {
             try
             {
-                string sql = "SELECT BookID AS ID, ISBN AS 书码, Title AS 书名, Author AS 作者, publisher AS 来源, Total AS 库存, Remain AS 剩余 FROM books";
-                DataTable dt = _dao.QueryDataTable(sql);
-                dataGridView1.DataSource = dt;
-                dataGridView1.AutoResizeColumns(DataGridViewAutoSizeColumnsMode.AllCells);
-                dataGridView1.ReadOnly = true;
+                List<Book> books = await _bookService.GetAllBooksAsync();
+                BookGridBinder.Bind(dataGridView1, books, readOnly: true);
+            }
+            catch (ServiceException ex)
+            {
+                MessageBox.Show(ex.Message, "操作失败", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"加载图书失败: {ex.Message}", "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show($"系统错误: {ex.Message}", "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
-        }
-
-        /// <summary>
-        /// 构建列结构与 Admin2 完全一致的空表
-        /// </summary>
-        private static DataTable CreateBookSchemaTable()
-        {
-            DataTable dt = new DataTable();
-            dt.Columns.Add("ID", typeof(int));
-            dt.Columns.Add("书码", typeof(string));
-            dt.Columns.Add("书名", typeof(string));
-            dt.Columns.Add("作者", typeof(string));
-            dt.Columns.Add("来源", typeof(string));
-            dt.Columns.Add("库存", typeof(int));
-            dt.Columns.Add("剩余", typeof(int));
-            return dt;
         }
     }
 }

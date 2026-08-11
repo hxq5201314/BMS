@@ -20,7 +20,7 @@ namespace BMS
         {
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
-            Application.Run(new SeeBook());
+            Application.Run(new LoginInterface());
         }
     }
 }

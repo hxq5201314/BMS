@@ -29,6 +29,7 @@ namespace BMS.Interface.User
         private void InitializeComponent()
         {
             this.dataGridView1 = new System.Windows.Forms.DataGridView();
+            this.mySqlCommand1 = new MySql.Data.MySqlClient.MySqlCommand();
             ((System.ComponentModel.ISupportInitialize)(this.dataGridView1)).BeginInit();
             this.SuspendLayout();
             // 
@@ -52,11 +53,18 @@ namespace BMS.Interface.User
             this.dataGridView1.Size = new System.Drawing.Size(653, 606);
             this.dataGridView1.TabIndex = 1;
             // 
+            // mySqlCommand1
+            // 
+            this.mySqlCommand1.CacheAge = 0;
+            this.mySqlCommand1.Connection = null;
+            this.mySqlCommand1.EnableCaching = false;
+            this.mySqlCommand1.Transaction = null;
+            // 
             // SeeBook
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(9F, 18F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(934, 606);
+            this.ClientSize = new System.Drawing.Size(654, 606);
             this.Controls.Add(this.dataGridView1);
             this.Name = "SeeBook";
             this.Text = "图书详情";
@@ -68,5 +76,6 @@ namespace BMS.Interface.User
         #endregion
 
         private System.Windows.Forms.DataGridView dataGridView1;
+        private MySql.Data.MySqlClient.MySqlCommand mySqlCommand1;
     }
 }

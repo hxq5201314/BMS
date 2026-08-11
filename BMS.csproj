@@ -104,6 +104,13 @@
     <Compile Include="Dao.cs" />
     <Compile Include="Data.cs" />
     <Compile Include="FormHelper.cs" />
+    <Compile Include="BookGridBinder.cs" />
+    <Compile Include="Models\Book.cs" />
+    <Compile Include="Models\BorrowRecord.cs" />
+    <Compile Include="Services\AuthService.cs" />
+    <Compile Include="Services\BookService.cs" />
+    <Compile Include="Services\BorrowService.cs" />
+    <Compile Include="Services\ServiceException.cs" />
     <Compile Include="Interface\Admin\Admin2.cs">
       <SubType>Form</SubType>
     </Compile>

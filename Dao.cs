@@ -1,11 +1,13 @@
 using MySql.Data.MySqlClient;
 using System;
 using System.Data;
+using System.Threading.Tasks;
 
 namespace BookMS
 {
     /// <summary>
-    /// 数据访问层：统一封装所有数据库操作，避免重复代码
+    /// 数据访问层：统一封装所有数据库操作，避免重复代码。
+    /// 提供同步 + 异步两套 API，UI 层优先使用异步方法避免阻塞 UI 线程。
     /// </summary>
     class Dao
     {
@@ -28,6 +30,8 @@ namespace BookMS
                 }
             }
         }
+
+        #region 同步方法
 
         /// <summary>
         /// 执行增删改
@@ -81,5 +85,50 @@ namespace BookMS
             }
             return cmd.ExecuteReader(CommandBehavior.CloseConnection);
         }
+
+        #endregion
+
+        #region 异步方法（UI 层推荐使用，不阻塞 UI 线程）
+
+        /// <summary>
+        /// 异步执行增删改
+        /// </summary>
+        public async Task<int> ExecuteNonQueryAsync(string sql, MySqlParameter[] parameters)
+        {
+            using (var conn = new MySqlConnection(ConnectionString))
+            using (var cmd = new MySqlCommand(sql, conn))
+            {
+                await conn.OpenAsync();
+                if (parameters != null)
+                {
+                    cmd.Parameters.AddRange(parameters);
+                }
+                return await cmd.ExecuteNonQueryAsync();
+            }
+        }
+
+        /// <summary>
+        /// 异步执行查询并返回 DataTable
+        /// </summary>
+        public async Task<DataTable> QueryDataTableAsync(string sql, MySqlParameter[] parameters = null)
+        {
+            using (var conn = new MySqlConnection(ConnectionString))
+            using (var cmd = new MySqlCommand(sql, conn))
+            {
+                await conn.OpenAsync();
+                if (parameters != null)
+                {
+                    cmd.Parameters.AddRange(parameters);
+                }
+                using (var reader = await cmd.ExecuteReaderAsync())
+                {
+                    var dt = new DataTable();
+                    dt.Load(reader);
+                    return dt;
+                }
+            }
+        }
+
+        #endregion
     }
 }

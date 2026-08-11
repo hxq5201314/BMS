@@ -1,20 +1,21 @@
-using BookMS;
-using MySql.Data.MySqlClient;
+using BMS.Models;
+using BMS.Services;
 using System;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace BMS.Interface
 {
     public partial class AdminAddBook : Form
     {
-        private readonly Dao _dao = new Dao();
+        private readonly BookService _bookService = new BookService();
 
         public AdminAddBook()
         {
             InitializeComponent();
         }
 
-        private void BtnAdd_Click(object sender, EventArgs e)
+        private async void BtnAdd_Click(object sender, EventArgs e)
         {
             // 基本输入校验
             if (string.IsNullOrWhiteSpace(textBox1.Text) ||
@@ -49,23 +50,21 @@ namespace BMS.Interface
                 return;
             }
 
+            // 由 UI 输入构建实体，业务层负责落库
+            var book = new Book
+            {
+                BookID = bookId,
+                ISBN = textBox1.Text,
+                Title = textBox2.Text,
+                Author = textBox3.Text,
+                Publisher = textBox4.Text,
+                Total = total,
+                Remain = remain
+            };
+
             try
             {
-                string sql = @"INSERT INTO books (BookID, ISBN, Title, Author, publisher, Total, Remain)
-                               VALUES (@BookID, @ISBN, @Title, @Author, @publisher, @Total, @Remain)";
-
-                var parameters = new[]
-                {
-                    new MySqlParameter("@BookID", bookId),
-                    new MySqlParameter("@ISBN", textBox1.Text),
-                    new MySqlParameter("@Title", textBox2.Text),
-                    new MySqlParameter("@Author", textBox3.Text),
-                    new MySqlParameter("@Publisher", textBox4.Text),
-                    new MySqlParameter("@Total", total),
-                    new MySqlParameter("@Remain", remain)
-                };
-
-                int n = _dao.ExecuteNonQuery(sql, parameters);
+                int n = await _bookService.AddBookAsync(book);
                 if (n > 0)
                 {
                     MessageBox.Show("添加成功");
@@ -77,9 +76,9 @@ namespace BMS.Interface
                     MessageBox.Show("添加失败，请检查数据");
                 }
             }
-            catch (MySqlException ex)
+            catch (ServiceException ex)
             {
-                MessageBox.Show($"数据库错误: {ex.Message}", "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(ex.Message, "操作失败", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
             catch (Exception ex)
             {
@@ -100,12 +99,10 @@ namespace BMS.Interface
         }
 
         /// <summary>
-        /// 取消按钮：关闭窗体返回上一页（模态窗体必须用 Close，不能用 Hide）
+        /// 取消按钮：关闭窗体返回上一页
         /// </summary>
         private void button2_Click(object sender, EventArgs e)
         {
-            // 对于 ShowDialog 打开的模态窗体，Close() 会让 ShowDialog 正常返回，
-            // 随后 FormHelper 的 finally 会 Dispose 窗体并执行回调刷新列表
             this.Close();
         }
     }

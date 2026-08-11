@@ -1,5 +1,6 @@
 using BMS.Interface;
 using System;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace BMS
@@ -23,7 +24,7 @@ namespace BMS
         }
 
         /// <summary>
-        /// 将欢迎标签在窗体中水平、垂直居中（消除重复代码）
+        /// 将欢迎标签在窗体中水平、垂直居中
         /// </summary>
         private void CenterWelcomeLabel()
         {
@@ -31,14 +32,34 @@ namespace BMS
             label1.Top = (ClientSize.Height - label1.Height) / 2;
         }
 
-        private void 图书管理ToolStripMenuItem_Click(object sender, EventArgs e)
+        private async void 图书管理ToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            // 使用 FormHelper 统一处理窗体切换，消除重复代码
-            FormHelper.ShowModal(
+            await FormHelper.ShowModal(
                 owner: this,
                 createChild: () => new Admin2(),
                 errorTitle: "打开图书管理界面"
             );
+        }
+
+        /// <summary>
+        /// 退出登录：二次确认 → 清空全局登录态 → 关闭本窗体 → 回到 LoginInterface
+        /// （控制流返回 LoginInterface.Button1_Click 中 FormHelper.ShowModal 的 finally 之后，其 owner.Show() 自动重现登录页）
+        /// </summary>
+        private void 退出登录ToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            DialogResult dr = MessageBox.Show(
+                "确认退出当前登录账号，返回登录界面？",
+                "退出登录",
+                MessageBoxButtons.OKCancel,
+                MessageBoxIcon.Question);
+            if (dr != DialogResult.OK) return;
+
+            // 清空登录态，防止回到登录页后仍残留老用户的 ID/姓名/角色
+            Data.UID = null;
+            Data.UName = null;
+            Data.Role = null;
+
+            this.Close();
         }
     }
 }

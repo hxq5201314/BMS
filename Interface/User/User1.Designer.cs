@@ -33,13 +33,12 @@ namespace BMS
             this.帮助ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.联系管理员ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.退出ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.图书查看与借阅ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.查看ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.借阅ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.借阅信息ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.正在借阅ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.已归还ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.借阅ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.dataGridView1 = new System.Windows.Forms.DataGridView();
+            this.图书信息ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.归还图书ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.menuStrip1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.dataGridView1)).BeginInit();
             this.SuspendLayout();
@@ -50,8 +49,8 @@ namespace BMS
             this.menuStrip1.ImageScalingSize = new System.Drawing.Size(24, 24);
             this.menuStrip1.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.系统ToolStripMenuItem,
-            this.图书查看与借阅ToolStripMenuItem,
-            this.借阅信息ToolStripMenuItem});
+            this.借阅信息ToolStripMenuItem,
+            this.图书信息ToolStripMenuItem});
             this.menuStrip1.Location = new System.Drawing.Point(0, 0);
             this.menuStrip1.Name = "menuStrip1";
             this.menuStrip1.Size = new System.Drawing.Size(1057, 32);
@@ -71,48 +70,27 @@ namespace BMS
             // 帮助ToolStripMenuItem
             // 
             this.帮助ToolStripMenuItem.Name = "帮助ToolStripMenuItem";
-            this.帮助ToolStripMenuItem.Size = new System.Drawing.Size(270, 34);
+            this.帮助ToolStripMenuItem.Size = new System.Drawing.Size(200, 34);
             this.帮助ToolStripMenuItem.Text = "帮助";
             // 
             // 联系管理员ToolStripMenuItem
             // 
             this.联系管理员ToolStripMenuItem.Name = "联系管理员ToolStripMenuItem";
-            this.联系管理员ToolStripMenuItem.Size = new System.Drawing.Size(270, 34);
+            this.联系管理员ToolStripMenuItem.Size = new System.Drawing.Size(200, 34);
             this.联系管理员ToolStripMenuItem.Text = "联系管理员";
             // 
             // 退出ToolStripMenuItem
             // 
             this.退出ToolStripMenuItem.Name = "退出ToolStripMenuItem";
-            this.退出ToolStripMenuItem.Size = new System.Drawing.Size(270, 34);
+            this.退出ToolStripMenuItem.Size = new System.Drawing.Size(200, 34);
             this.退出ToolStripMenuItem.Text = "退出";
-            // 
-            // 图书查看与借阅ToolStripMenuItem
-            // 
-            this.图书查看与借阅ToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.查看ToolStripMenuItem,
-            this.借阅ToolStripMenuItem});
-            this.图书查看与借阅ToolStripMenuItem.Name = "图书查看与借阅ToolStripMenuItem";
-            this.图书查看与借阅ToolStripMenuItem.Size = new System.Drawing.Size(152, 28);
-            this.图书查看与借阅ToolStripMenuItem.Text = "图书查看与借阅";
-            // 
-            // 查看ToolStripMenuItem
-            // 
-            this.查看ToolStripMenuItem.Name = "查看ToolStripMenuItem";
-            this.查看ToolStripMenuItem.Size = new System.Drawing.Size(270, 34);
-            this.查看ToolStripMenuItem.Text = "查看";
-            this.查看ToolStripMenuItem.Click += new System.EventHandler(this.查看ToolStripMenuItem_Click);
-            // 
-            // 借阅ToolStripMenuItem
-            // 
-            this.借阅ToolStripMenuItem.Name = "借阅ToolStripMenuItem";
-            this.借阅ToolStripMenuItem.Size = new System.Drawing.Size(270, 34);
-            this.借阅ToolStripMenuItem.Text = "借阅";
             // 
             // 借阅信息ToolStripMenuItem
             // 
             this.借阅信息ToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.正在借阅ToolStripMenuItem,
-            this.已归还ToolStripMenuItem});
+            this.借阅ToolStripMenuItem,
+            this.归还图书ToolStripMenuItem});
             this.借阅信息ToolStripMenuItem.Name = "借阅信息ToolStripMenuItem";
             this.借阅信息ToolStripMenuItem.Size = new System.Drawing.Size(98, 28);
             this.借阅信息ToolStripMenuItem.Text = "借阅信息";
@@ -122,12 +100,14 @@ namespace BMS
             this.正在借阅ToolStripMenuItem.Name = "正在借阅ToolStripMenuItem";
             this.正在借阅ToolStripMenuItem.Size = new System.Drawing.Size(270, 34);
             this.正在借阅ToolStripMenuItem.Text = "正在借阅";
+            this.正在借阅ToolStripMenuItem.Click += new System.EventHandler(this.正在借阅ToolStripMenuItem_Click);
             // 
-            // 已归还ToolStripMenuItem
+            // 借阅ToolStripMenuItem
             // 
-            this.已归还ToolStripMenuItem.Name = "已归还ToolStripMenuItem";
-            this.已归还ToolStripMenuItem.Size = new System.Drawing.Size(270, 34);
-            this.已归还ToolStripMenuItem.Text = "已归还";
+            this.借阅ToolStripMenuItem.Name = "借阅ToolStripMenuItem";
+            this.借阅ToolStripMenuItem.Size = new System.Drawing.Size(270, 34);
+            this.借阅ToolStripMenuItem.Text = "借阅";
+            this.借阅ToolStripMenuItem.Click += new System.EventHandler(this.借阅ToolStripMenuItem_Click);
             // 
             // dataGridView1
             // 
@@ -149,6 +129,20 @@ namespace BMS
             this.dataGridView1.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect;
             this.dataGridView1.Size = new System.Drawing.Size(1057, 640);
             this.dataGridView1.TabIndex = 1;
+            // 
+            // 图书信息ToolStripMenuItem
+            // 
+            this.图书信息ToolStripMenuItem.Name = "图书信息ToolStripMenuItem";
+            this.图书信息ToolStripMenuItem.Size = new System.Drawing.Size(98, 28);
+            this.图书信息ToolStripMenuItem.Text = "图书信息";
+            this.图书信息ToolStripMenuItem.Click += new System.EventHandler(this.查看ToolStripMenuItem_Click);
+            // 
+            // 归还图书ToolStripMenuItem
+            // 
+            this.归还图书ToolStripMenuItem.Name = "归还图书ToolStripMenuItem";
+            this.归还图书ToolStripMenuItem.Size = new System.Drawing.Size(270, 34);
+            this.归还图书ToolStripMenuItem.Text = "归还图书";
+            this.归还图书ToolStripMenuItem.Click += new System.EventHandler(this.归还图书ToolStripMenuItem_Click);
             // 
             // User1
             // 
@@ -177,12 +171,11 @@ namespace BMS
         private System.Windows.Forms.ToolStripMenuItem 帮助ToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem 联系管理员ToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem 退出ToolStripMenuItem;
-        private System.Windows.Forms.ToolStripMenuItem 图书查看与借阅ToolStripMenuItem;
-        private System.Windows.Forms.ToolStripMenuItem 查看ToolStripMenuItem;
-        private System.Windows.Forms.ToolStripMenuItem 借阅ToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem 借阅信息ToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem 正在借阅ToolStripMenuItem;
-        private System.Windows.Forms.ToolStripMenuItem 已归还ToolStripMenuItem;
         private System.Windows.Forms.DataGridView dataGridView1;
+        private System.Windows.Forms.ToolStripMenuItem 借阅ToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem 图书信息ToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem 归还图书ToolStripMenuItem;
     }
 }

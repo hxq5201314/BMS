@@ -1,45 +1,43 @@
-using BookMS;
-using MySql.Data.MySqlClient;
+using BMS.Models;
+using BMS.Services;
 using System;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace BMS.Interface.Admin
 {
     public partial class EditBook : Form
     {
-        private readonly Dao _dao = new Dao();
-        private readonly int _originalBookId;  // 原始主键（用于 WHERE，防止修改到其他行）
+        private readonly BookService _bookService = new BookService();
+        private readonly Book _book;  // 原始图书（用其 BookID 作为 UPDATE 的 WHERE，防止误改主键）
 
         /// <summary>
-        /// 构造函数：接收选中图书的7个字段，填充到对应 TextBox
+        /// 构造函数：接收选中图书实体，填充到对应 TextBox
         /// </summary>
-        public EditBook(int bookId, string isbn, string title, string author, string publisher, int total, int remain)
+        public EditBook(Book book)
         {
             InitializeComponent();
+            _book = book;
 
-            _originalBookId = bookId;
+            // 填充数据到控件
+            textBox7.Text = book.BookID.ToString();
+            textBox1.Text = book.ISBN;
+            textBox2.Text = book.Title;
+            textBox3.Text = book.Author;
+            textBox4.Text = book.Publisher;
+            textBox5.Text = book.Total.ToString();
+            textBox6.Text = book.Remain.ToString();
 
-            // 填充数据到控件（用户说的"把数据传递到labelbox中"，实际是 TextBox 以便编辑）
-            textBox7.Text = bookId.ToString();
-            textBox1.Text = isbn;
-            textBox2.Text = title;
-            textBox3.Text = author;
-            textBox4.Text = publisher;
-            textBox5.Text = total.ToString();
-            textBox6.Text = remain.ToString();
-
-            // ID 是主键，不允许修改（设为只读 + 灰底提示用户）
+            // ID 是主键，不允许修改
             textBox7.ReadOnly = true;
             textBox7.BackColor = System.Drawing.Color.LightGray;
-
         }
 
         /// <summary>
-        /// 修改图书按钮：校验 → UPDATE 数据库 → 关闭
+        /// 修改图书按钮：校验 → 用文本框当前值构建更新实体 → 异步 UPDATE → 关闭
         /// </summary>
-        private void BtnSave_Click(object sender, EventArgs e)
+        private async void BtnSave_Click(object sender, EventArgs e)
         {
-            // 输入校验（和 AdminAddBook 保持一致）
             if (string.IsNullOrWhiteSpace(textBox1.Text) ||
                 string.IsNullOrWhiteSpace(textBox2.Text) ||
                 string.IsNullOrWhiteSpace(textBox3.Text) ||
@@ -66,26 +64,21 @@ namespace BMS.Interface.Admin
                 return;
             }
 
+            // 用文本框当前值构建更新实体，主键用原始 _book.BookID
+            var updated = new Book
+            {
+                BookID = _book.BookID,
+                ISBN = textBox1.Text.Trim(),
+                Title = textBox2.Text.Trim(),
+                Author = textBox3.Text.Trim(),
+                Publisher = textBox4.Text.Trim(),
+                Total = total,
+                Remain = remain
+            };
+
             try
             {
-                // UPDATE 时 WHERE 用原始 _originalBookId，避免用户手动尝试改 ID 文本框造成误更新
-                string sql = @"UPDATE books 
-                               SET ISBN = @ISBN, Title = @Title, Author = @Author, 
-                                   publisher = @publisher, Total = @Total, Remain = @Remain
-                               WHERE BookID = @OriginalBookID";
-
-                var parameters = new[]
-                {
-                    new MySqlParameter("@ISBN", textBox1.Text.Trim()),
-                    new MySqlParameter("@Title", textBox2.Text.Trim()),
-                    new MySqlParameter("@Author", textBox3.Text.Trim()),
-                    new MySqlParameter("@publisher", textBox4.Text.Trim()),
-                    new MySqlParameter("@Total", total),
-                    new MySqlParameter("@Remain", remain),
-                    new MySqlParameter("@OriginalBookID", _originalBookId)
-                };
-
-                int n = _dao.ExecuteNonQuery(sql, parameters);
+                int n = await _bookService.UpdateBookAsync(updated);
                 if (n > 0)
                 {
                     MessageBox.Show("修改成功");
@@ -96,9 +89,9 @@ namespace BMS.Interface.Admin
                     MessageBox.Show("数据未变更");
                 }
             }
-            catch (MySqlException ex)
+            catch (ServiceException ex)
             {
-                MessageBox.Show($"数据库错误: {ex.Message}", "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(ex.Message, "操作失败", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
             catch (Exception ex)
             {
