@@ -31,6 +31,46 @@ namespace BMS.Services
             }
         }
 
+        /// <summary>
+        /// 异步查询下一个可用的图书 ID（当前最大 BookID + 1）；空表返回 1
+        /// </summary>
+        public async Task<int> GetNextBookIdAsync()
+        {
+            try
+            {
+                const string sql = "SELECT COALESCE(MAX(BookID), 0) + 1 FROM books";
+                DataTable dt = await _dao.QueryDataTableAsync(sql);
+                if (dt.Rows.Count == 0) return 1;
+                object v = dt.Rows[0][0];
+                return (v == null || v == DBNull.Value) ? 1 : Convert.ToInt32(v);
+            }
+            catch (MySqlException ex)
+            {
+                throw new ServiceException("查询下一个图书ID失败: " + ex.Message, ex);
+            }
+        }
+
+        /// <summary>
+        /// 异步检查指定 BookID 是否已存在；存在返回 true，不存在返回 false
+        /// </summary>
+        public async Task<bool> ExistsBookIdAsync(int bookId)
+        {
+            try
+            {
+                const string sql = "SELECT COUNT(*) FROM books WHERE BookID = @id";
+                DataTable dt = await _dao.QueryDataTableAsync(sql,
+                    new[] { new MySqlParameter("@id", bookId) });
+                if (dt.Rows.Count == 0) return false;
+                object v = dt.Rows[0][0];
+                int n = (v == null || v == DBNull.Value) ? 0 : Convert.ToInt32(v);
+                return n > 0;
+            }
+            catch (MySqlException ex)
+            {
+                throw new ServiceException("检查图书ID是否存在失败: " + ex.Message, ex);
+            }
+        }
+
         /// <summary>异步新增图书，返回受影响行数</summary>
         public async Task<int> AddBookAsync(Book book)
         {
@@ -52,6 +92,15 @@ namespace BMS.Services
             }
             catch (MySqlException ex)
             {
+                // MySQL 错误号 1062 = 唯一键/主键重复
+                if (ex.Number == 1062)
+                {
+                    if (ex.Message.Contains("PRIMARY"))
+                        throw new ServiceException($"添加图书失败：ID「{book.BookID}」已存在，请更换一个不同的ID", ex);
+                    if (ex.Message.Contains("ISBN"))
+                        throw new ServiceException($"添加图书失败：书码「{book.ISBN}」已存在，同一本书请勿重复添加", ex);
+                    throw new ServiceException($"添加图书失败：数据重复（{ex.Message}）", ex);
+                }
                 throw new ServiceException("添加图书失败: " + ex.Message, ex);
             }
         }
