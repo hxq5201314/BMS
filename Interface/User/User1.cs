@@ -168,9 +168,9 @@ namespace BMS
                 form.AcceptButton = okBtn;
                 form.CancelButton = cancelBtn;
 
-                if (contentLbl != null) { contentLbl.Dispose(); }
-                lbl.Dispose();
-                txt.Dispose();
+                // 注意：contentLbl、lbl、txt 是 form 的子控件，
+                // 当 form 被 Dispose（using 块结束）时会自动释放子控件，
+                // 不能在 ShowDialog 之前手动 Dispose，否则窗体将显示为空白
 
                 IWin32Window ownerActual = owner ?? Form.ActiveForm;
                 return form.ShowDialog(ownerActual) == DialogResult.OK ? txt.Text : null;
