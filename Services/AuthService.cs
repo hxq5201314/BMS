@@ -44,7 +44,7 @@ namespace BMS.Services
             }
             catch (MySqlException ex)
             {
-                throw new ServiceException("登录验证失败: " + ex.Message, ex);
+                throw new ServiceException("数据库未连接" + ex.Message, ex);
             }
         }
 

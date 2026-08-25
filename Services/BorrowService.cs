@@ -23,17 +23,17 @@ namespace BMS.Services
         public async Task EnsureTableExistsAsync()
         {
             const string sql = @"
-CREATE TABLE IF NOT EXISTS borrow_records (
-    borrow_id   INT AUTO_INCREMENT PRIMARY KEY,
-    user_id     VARCHAR(50) NOT NULL,
-    book_id     INT NOT NULL,
-    borrow_date DATETIME NOT NULL,
-    return_date DATETIME NULL,
-    status      VARCHAR(20) NOT NULL DEFAULT '借阅中',
-    INDEX idx_user (user_id),
-    INDEX idx_book (book_id),
-    INDEX idx_status (status)
-) CHARSET=utf8mb4;";
+                                CREATE TABLE IF NOT EXISTS borrow_records (
+                                    borrow_id   INT AUTO_INCREMENT PRIMARY KEY,
+                                    user_id     VARCHAR(50) NOT NULL,
+                                    book_id     INT NOT NULL,
+                                    borrow_date DATETIME NOT NULL,
+                                    return_date DATETIME NULL,
+                                    status      VARCHAR(20) NOT NULL DEFAULT '借阅中',
+                                    INDEX idx_user (user_id),
+                                    INDEX idx_book (book_id),
+                                    INDEX idx_status (status)
+                                ) CHARSET=utf8mb4;";
             try
             {
                 await _dao.ExecuteNonQueryAsync(sql, null);

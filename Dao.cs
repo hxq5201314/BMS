@@ -3,6 +3,7 @@ using System;
 using System.Configuration;
 using System.Data;
 using System.Threading.Tasks;
+using System.Windows.Forms;
 
 namespace BookMS
 {
@@ -18,9 +19,10 @@ namespace BookMS
     class Dao
     {
         /// <summary>
-        /// 兜底连接串：仅当 App.config 忘记配置时使用，避免程序直接崩。
+        /// 仅当 App.config 忘记配置时使用，避免程序直接崩。
         /// 生产环境务必在 App.config 中配置，不要依赖这个默认值。
         /// </summary>
+        
         private const string DefaultConnectionString =
             "server=localhost;port=3306;database=BookDB;user id=root;password=1111;";
 
@@ -45,6 +47,7 @@ namespace BookMS
             {
                 // App.config 格式错误时，ConfigurationManager 会抛这个异常
                 // 这里不抛出，让兜底连接串生效，至少能看到报错而非直接崩溃
+                MessageBox.Show("数据库未连接，请连接数据库后尝试。");
             }
 
             // 走到这里说明 .config 没配好
@@ -55,22 +58,6 @@ namespace BookMS
         /// 当前实际使用的数据库连接字符串（只读属性，对外暴露读取路径）
         /// </summary>
         private static string ConnectionString => _connectionString.Value;
-
-        /// <summary>
-        /// 执行增删改（无参数，已弃用：优先使用带参数的 ExecuteNonQuery）
-        /// </summary>
-        [Obsolete("请使用带 MySqlParameter[] 参数的 ExecuteNonQuery 以防止 SQL 注入")]
-        public int Execute(string sql)
-        {
-            using (var conn = new MySqlConnection(ConnectionString))
-            {
-                conn.Open();
-                using (var cmd = new MySqlCommand(sql, conn))
-                {
-                    return cmd.ExecuteNonQuery();
-                }
-            }
-        }
 
         #region 同步方法
 
