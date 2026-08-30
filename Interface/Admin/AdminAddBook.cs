@@ -138,7 +138,7 @@ namespace BMS.Interface
         /// <summary>
         /// 取消按钮：关闭窗体返回上一页
         /// </summary>
-        private void button2_Click(object sender, EventArgs e)
+        private void Button2_Click(object sender, EventArgs e)
         {
             this.Close();
         }

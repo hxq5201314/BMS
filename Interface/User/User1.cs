@@ -120,10 +120,10 @@ namespace BMS
                         Left = LeftMargin,
                         Top = cursorTop,
                         Width = clientWidth - LeftMargin * 2,
-                        Text = contentAbove
+                        Text = contentAbove,
+                        // 自动高度：先设大一点再用 PreferredSize 真实测量
+                        Height = 500
                     };
-                    // 自动高度：先设大一点再用 PreferredSize 真实测量
-                    contentLbl.Height = 500;
                     Size pref = contentLbl.PreferredSize;
                     contentLbl.Height = Math.Max(pref.Height, 20);
                     form.Controls.Add(contentLbl);
