@@ -3,8 +3,7 @@ using System;
 namespace BMS.Services
 {
     /// <summary>
-    /// 业务层异常：Service 捕获底层数据库异常后包装抛出，
-    /// 使 UI 层无需引用 MySql.Data 即可区分业务错误与系统错误
+    /// 业务层异常：用于包装数据库或底层异常
     /// </summary>
     public class ServiceException : Exception
     {

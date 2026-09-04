@@ -14,15 +14,10 @@ namespace BMS.Interface
         {
             InitializeComponent();
             this.Load += AdminAddBook_Load;
-            // ID 文本框默认只读，由系统自动分配下一个可用 ID；
-            // 如需手动指定，可在 textBox7 上右键或通过代码移除以下一行
             textBox7.ReadOnly = true;
             textBox7.BackColor = System.Drawing.Color.FromArgb(240, 240, 240);
         }
 
-        /// <summary>
-        /// 窗体加载：自动查询并填入下一个可用图书 ID，避免主键冲突
-        /// </summary>
         private async void AdminAddBook_Load(object sender, EventArgs e)
         {
             try
@@ -33,7 +28,6 @@ namespace BMS.Interface
             }
             catch (ServiceException ex)
             {
-                // 获取失败不阻塞流程，只给个提示，用户还可以手动输入（如果开启了编辑）
                 MessageBox.Show(ex.Message + Environment.NewLine + "请手动填写有效的图书ID",
                     "获取下一个ID失败", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
@@ -45,7 +39,6 @@ namespace BMS.Interface
 
         private async void BtnAdd_Click(object sender, EventArgs e)
         {
-            // 基本输入校验
             if (string.IsNullOrWhiteSpace(textBox1.Text) ||
                 string.IsNullOrWhiteSpace(textBox2.Text) ||
                 string.IsNullOrWhiteSpace(textBox3.Text) ||
@@ -78,7 +71,6 @@ namespace BMS.Interface
                 return;
             }
 
-            // 主动检查 ID 是否已存在（比等数据库抛错更快反馈，体验更好）
             try
             {
                 bool exists = await _bookService.ExistsBookIdAsync(bookId);
@@ -96,11 +88,9 @@ namespace BMS.Interface
             }
             catch (ServiceException ex)
             {
-                // 检查失败只警告，不阻断流程，业务层还有兜底的 1062 捕获
                 MessageBox.Show(ex.Message, "检查ID失败", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
 
-            // 由 UI 输入构建实体，业务层负责落库
             var book = new Book
             {
                 BookID = bookId,
@@ -118,7 +108,6 @@ namespace BMS.Interface
                 if (n > 0)
                 {
                     MessageBox.Show("添加成功");
-                    // 添加成功后关闭本窗体，返回 Admin2 并自动刷新列表
                     this.Close();
                 }
                 else
@@ -135,9 +124,7 @@ namespace BMS.Interface
                 MessageBox.Show($"系统错误: {ex.Message}", "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
-        /// <summary>
-        /// 取消按钮：关闭窗体返回上一页
-        /// </summary>
+
         private void Button2_Click(object sender, EventArgs e)
         {
             this.Close();

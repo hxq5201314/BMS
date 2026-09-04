@@ -2,15 +2,8 @@ namespace BMS.Interface.User
 {
     partial class SeeBook
     {
-        /// <summary>
-        /// Required designer variable.
-        /// </summary>
         private System.ComponentModel.IContainer components = null;
 
-        /// <summary>
-        /// Clean up any resources being used.
-        /// </summary>
-        /// <param name="disposing">true if managed resources should be disposed; otherwise, false.</param>
         protected override void Dispose(bool disposing)
         {
             if (disposing && (components != null))
@@ -22,19 +15,14 @@ namespace BMS.Interface.User
 
         #region Windows Form Designer generated code
 
-        /// <summary>
-        /// Required method for Designer support - do not modify
-        /// the contents of this method with the code editor.
-        /// </summary>
         private void InitializeComponent()
         {
             this.dataGridView1 = new System.Windows.Forms.DataGridView();
-            this.mySqlCommand1 = new MySql.Data.MySqlClient.MySqlCommand();
             ((System.ComponentModel.ISupportInitialize)(this.dataGridView1)).BeginInit();
             this.SuspendLayout();
-            // 
+            //
             // dataGridView1
-            // 
+            //
             this.dataGridView1.AllowUserToAddRows = false;
             this.dataGridView1.AllowUserToDeleteRows = false;
             this.dataGridView1.AllowUserToOrderColumns = true;
@@ -52,16 +40,9 @@ namespace BMS.Interface.User
             this.dataGridView1.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect;
             this.dataGridView1.Size = new System.Drawing.Size(653, 606);
             this.dataGridView1.TabIndex = 1;
-            // 
-            // mySqlCommand1
-            // 
-            this.mySqlCommand1.CacheAge = 0;
-            this.mySqlCommand1.Connection = null;
-            this.mySqlCommand1.EnableCaching = false;
-            this.mySqlCommand1.Transaction = null;
-            // 
+            //
             // SeeBook
-            // 
+            //
             this.AutoScaleDimensions = new System.Drawing.SizeF(9F, 18F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(654, 606);
@@ -76,6 +57,5 @@ namespace BMS.Interface.User
         #endregion
 
         private System.Windows.Forms.DataGridView dataGridView1;
-        private MySql.Data.MySqlClient.MySqlCommand mySqlCommand1;
     }
 }

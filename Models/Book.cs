@@ -1,8 +1,7 @@
 namespace BMS.Models
 {
     /// <summary>
-    /// 图书实体类：对应 books 表的一行。
-    /// 各层（Service / UI）通过它传递图书数据，不再散落 7 个参数
+    /// 图书实体
     /// </summary>
     public class Book
     {

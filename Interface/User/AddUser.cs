@@ -1,6 +1,5 @@
 using BMS.Services;
 using System;
-using System.Drawing;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
@@ -10,9 +9,7 @@ namespace BMS.Interface.User
     {
         private readonly AuthService _authService = new AuthService();
 
-        /// <summary>注册成功后为 true；由 LoginInterface.Button2_Click 回调判断是否回填用户名</summary>
         public bool RegisteredSuccess { get; private set; }
-        /// <summary>注册成功时写入的用户名（供 LoginInterface 回填到登录文本框）</summary>
         public string RegisteredUserName { get; private set; }
 
         public AddUser()
@@ -23,15 +20,10 @@ namespace BMS.Interface.User
             this.FormBorderStyle = FormBorderStyle.FixedDialog;
             this.MaximizeBox = false;
             this.MinimizeBox = false;
-            this.AcceptButton = button1;  // 回车触发注册
-            this.CancelButton = button2;  // Esc 触发取消
+            this.AcceptButton = button1;
+            this.CancelButton = button2;
         }
 
-       
-
-        /// <summary>
-        /// 绑定注册/取消按钮 Click 事件（Designer.cs 未绑定，避免修改设计器文件）
-        /// </summary>
         private void InitButtons()
         {
             button1.Click -= BtnRegister_Click;
@@ -41,9 +33,6 @@ namespace BMS.Interface.User
             button2.Click += BtnCancel_Click;
         }
 
-        /// <summary>
-        /// 取消：直接关闭，不记录任何状态
-        /// </summary>
         private void BtnCancel_Click(object sender, EventArgs e)
         {
             RegisteredSuccess = false;
@@ -51,12 +40,8 @@ namespace BMS.Interface.User
             this.Close();
         }
 
-        /// <summary>
-        /// 注册按钮：UI 字段校验 → 调用 RegisterUserAsync → 成功提示并 Close；失败仅提示，窗体保持以便修改
-        /// </summary>
         private async void BtnRegister_Click(object sender, EventArgs e)
         {
-            // 1. 字段 Trim + 基础校验（两次密码一致性、长度、空值——长度等进一步校验在 Service 层再做一层兜底）
             string username = textBox1.Text?.Trim() ?? "";
             string password = textBox2.Text ?? "";
             string confirm  = textBox3.Text ?? "";
@@ -87,7 +72,6 @@ namespace BMS.Interface.User
                 return;
             }
 
-            // 2. 调用业务层注册
             RegisterResult result;
             try
             {
@@ -107,7 +91,6 @@ namespace BMS.Interface.User
             if (!result.Success)
             {
                 MessageBox.Show(result.Message, "注册失败", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                // 用户名冲突时自动选中用户名输入框方便修改
                 if (result.Message.Contains("已被占用"))
                 {
                     textBox1.SelectAll();
@@ -116,7 +99,6 @@ namespace BMS.Interface.User
                 return;
             }
 
-            // 3. 注册成功：记录结果 → 提示 → 关闭窗体
             RegisteredSuccess = true;
             RegisteredUserName = username;
             MessageBox.Show($"注册成功！请使用用户名\"{username}\"登录。", "注册成功",

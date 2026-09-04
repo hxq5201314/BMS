@@ -13,7 +13,7 @@ namespace BMS.Interface
     {
         private readonly BookService _bookService = new BookService();
 
-        // 查询状态：记住上次关键词、匹配行索引列表、当前定位游标
+        // 查询状态
         private readonly List<int> _matchedRowIndices = new List<int>();
         private string _lastKeyword = null;
         private int _currentMatchCursor = -1;
@@ -28,21 +28,15 @@ namespace BMS.Interface
             await RefreshBookListAsync();
         }
 
-        /// <summary>
-        /// 异步重新从数据库加载图书列表并绑定到 DataGridView
-        /// </summary>
         private async Task RefreshBookListAsync()
         {
-            // 防御：如果窗体或核心控件已释放（如嵌套 ShowDialog 期间父窗体被关），
-            // 直接返回不抛 ObjectDisposedException
             if (this.IsDisposed || dataGridView1.IsDisposed || label2.IsDisposed) return;
 
             try
             {
                 List<Book> books = await _bookService.GetAllBooksAsync();
-                if (this.IsDisposed || dataGridView1.IsDisposed) return; // await 期间仍可能被 Dispose
+                if (this.IsDisposed || dataGridView1.IsDisposed) return;
                 BookGridBinder.Bind(dataGridView1, books);
-                // 刷新数据后必须重置查询状态，否则匹配的行索引/高亮会错位
                 ResetMatchState();
                 if (!label2.IsDisposed) label2.Text = "";
             }
@@ -58,9 +52,6 @@ namespace BMS.Interface
             }
         }
 
-        /// <summary>
-        /// 添加图书按钮事件：使用异步回调刷新
-        /// </summary>
         private async void Button1_Click(object sender, EventArgs e)
         {
             await FormHelper.ShowModal(
@@ -71,9 +62,6 @@ namespace BMS.Interface
             );
         }
 
-        /// <summary>
-        /// 删除图书按钮事件
-        /// </summary>
         private async void button2_Click(object sender, EventArgs e)
         {
             DialogResult dr = MessageBox.Show("确认删除？", "信息提示", MessageBoxButtons.OKCancel, MessageBoxIcon.Question);
@@ -104,9 +92,6 @@ namespace BMS.Interface
             }
         }
 
-        /// <summary>
-        /// 修改图书点击事件：异步回调刷新
-        /// </summary>
         private async void button3_Click(object sender, EventArgs e)
         {
             if (!TryGetSelectedBook(out Book book)) return;
@@ -119,18 +104,12 @@ namespace BMS.Interface
             );
         }
 
-        /// <summary>
-        /// 点击单元格事件：更新底部选中行信息（纯内存操作，无需异步）
-        /// </summary>
         private void dataGridView1_Click(object sender, EventArgs e)
         {
             if (!TryGetSelectedBook(out Book book)) return;
             label2.Text = book.BookID + "  书名：" + book.Title;
         }
 
-        /// <summary>
-        /// 尝试获取当前选中行对应的图书实体（删除/修改共用）
-        /// </summary>
         private bool TryGetSelectedBook(out Book book)
         {
             book = null;
@@ -139,9 +118,6 @@ namespace BMS.Interface
             return book != null;
         }
 
-        /// <summary>
-        /// 查询点击事件（纯内存操作，无需异步）
-        /// </summary>
         private void button5_Click(object sender, EventArgs e)
         {
             string keyword = textBox1.Text?.Trim();
@@ -192,7 +168,7 @@ namespace BMS.Interface
                 dataGridView1.FirstDisplayedScrollingRowIndex = targetRowIndex;
         }
 
-        #region 查询辅助方法（高亮 + 状态重置 + 行内容匹配）
+        #region 查询辅助方法
 
         private bool RowContainsKeyword(DataGridViewRow row, string keyword)
         {

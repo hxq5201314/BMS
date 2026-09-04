@@ -9,8 +9,7 @@ using System.Threading.Tasks;
 namespace BMS.Services
 {
     /// <summary>
-    /// 图书业务层：封装所有 books 表的数据库操作（全异步）。
-    /// UI 层只调用本服务、不接触 SQL；底层数据库异常统一包装为 ServiceException
+    /// 图书业务层：books 表 CRUD
     /// </summary>
     public class BookService
     {
@@ -32,7 +31,7 @@ namespace BMS.Services
         }
 
         /// <summary>
-        /// 异步查询下一个可用的图书 ID（当前最大 BookID + 1）；空表返回 1
+        /// 查询下一个可用的图书 ID（当前最大 BookID + 1）
         /// </summary>
         public async Task<int> GetNextBookIdAsync()
         {
@@ -51,7 +50,7 @@ namespace BMS.Services
         }
 
         /// <summary>
-        /// 异步检查指定 BookID 是否已存在；存在返回 true，不存在返回 false
+        /// 检查指定 BookID 是否已存在
         /// </summary>
         public async Task<bool> ExistsBookIdAsync(int bookId)
         {
@@ -71,7 +70,7 @@ namespace BMS.Services
             }
         }
 
-        /// <summary>异步新增图书，返回受影响行数</summary>
+        /// <summary>异步新增图书</summary>
         public async Task<int> AddBookAsync(Book book)
         {
             try
@@ -92,7 +91,6 @@ namespace BMS.Services
             }
             catch (MySqlException ex)
             {
-                // MySQL 错误号 1062 = 唯一键/主键重复
                 if (ex.Number == 1062)
                 {
                     if (ex.Message.Contains("PRIMARY"))
@@ -105,7 +103,7 @@ namespace BMS.Services
             }
         }
 
-        /// <summary>异步按 BookID 更新图书（主键不可改，WHERE 用 BookID）</summary>
+        /// <summary>异步按 BookID 更新图书</summary>
         public async Task<int> UpdateBookAsync(Book book)
         {
             try
@@ -146,7 +144,7 @@ namespace BMS.Services
             }
         }
 
-        /// <summary>异步查询单本图书的当前可借库存 Remain；找不到则返回 null</summary>
+        /// <summary>查询单本图书的当前可借库存，找不到则返回 null</summary>
         public async Task<int?> GetBookRemainAsync(int bookId)
         {
             try
@@ -164,7 +162,6 @@ namespace BMS.Services
             }
         }
 
-        /// <summary>DataTable → List<Book></summary>
         private static List<Book> ToList(DataTable dt)
         {
             var list = new List<Book>(dt.Rows.Count);

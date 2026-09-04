@@ -9,16 +9,14 @@ using System.Threading.Tasks;
 namespace BMS.Services
 {
     /// <summary>
-    /// 借阅业务层：封装 borrow_records 表的所有操作 + 借阅时联动更新 books.Remain。
-    /// 借阅规则：同一用户对同一本书只能存在一条"借阅中"记录；归还后可再次借阅
+    /// 借阅业务层：借/还/查询记录
     /// </summary>
     public class BorrowService
     {
         private readonly Dao _dao = new Dao();
 
         /// <summary>
-        /// 首次使用时确保借阅记录表存在（幂等，可重复调用）。
-        /// 在 User1_Load 中调用一次即可
+        /// 确保借阅记录表存在（可重复调用）
         /// </summary>
         public async Task EnsureTableExistsAsync()
         {
@@ -45,13 +43,10 @@ namespace BMS.Services
         }
 
         /// <summary>
-        /// 借阅图书：去重检查（同事务内 SELECT ... FOR UPDATE 行锁防并发）→ 减库存 → 插记录。
-        /// 三条 SQL 共用连接 + 事务，任意一步异常整批回滚，进程崩溃也不会残留半写数据。
-        /// 失败情况：账号无效 / 库存不足 / 已借过未还 / DB 写失败
+        /// 借阅图书：去重检查 → 减库存 → 插记录（事务内执行）
         /// </summary>
         public async Task<BorrowResult> BorrowAsync(string userId, int bookId)
         {
-            // 输入校验（在事务外快速失败，避免占用连接）
             if (string.IsNullOrWhiteSpace(userId))
                 return BorrowResult.Fail("账号信息无效，请确认后再操作");
             if (bookId <= 0)
@@ -61,7 +56,7 @@ namespace BMS.Services
             {
                 return await _dao.RunInTransactionAsync(async (conn, tran) =>
                 {
-                    // 1. 去重检查：SELECT ... FOR UPDATE 锁住命中行，避免并发下重复插入"借阅中"记录
+                    // 去重检查（同事务内 FOR UPDATE 行锁防并发）
                     const string checkSql = @"SELECT COUNT(*) FROM borrow_records
                                               WHERE user_id = @uid AND book_id = @bid AND status = '借阅中'
                                               FOR UPDATE";
@@ -74,7 +69,7 @@ namespace BMS.Services
                             return BorrowResult.Fail("您已借阅此书且尚未归还，无法重复借阅");
                     }
 
-                    // 2. 减库存：WHERE Remain > 0 + 行锁防止超借
+                    // 减库存（WHERE Remain > 0 防超借）
                     const string decreaseSql = "UPDATE books SET Remain = Remain - 1 WHERE BookID = @id AND Remain > 0";
                     int affected;
                     using (var decCmd = new MySqlCommand(decreaseSql, conn, tran))
@@ -85,7 +80,7 @@ namespace BMS.Services
                     if (affected == 0)
                         return BorrowResult.Fail("库存不足，借阅失败");
 
-                    // 3. 插借阅记录（和前两步同一事务，失败时由 RunInTransactionAsync 自动 Rollback，库存一起恢复）
+                    // 插借阅记录
                     const string insertSql = @"INSERT INTO borrow_records (user_id, book_id, borrow_date, status)
                                                VALUES (@uid, @bid, @date, '借阅中')";
                     using (var insCmd = new MySqlCommand(insertSql, conn, tran))
@@ -106,7 +101,7 @@ namespace BMS.Services
         }
 
         /// <summary>
-        /// 查询指定用户当前"借阅中"的图书数量（COUNT，轻量，不用 JOIN/反序列化列表）
+        /// 查询指定用户当前"借阅中"的图书数量
         /// </summary>
         public async Task<int> GetBorrowingCountAsync(string userId)
         {
@@ -127,7 +122,7 @@ namespace BMS.Services
         }
 
         /// <summary>
-        /// 查询指定用户当前"借阅中"的图书列表（JOIN books 取书名/ISBN）
+        /// 查询指定用户当前"借阅中"的图书列表
         /// </summary>
         public async Task<List<BorrowRecord>> GetBorrowingAsync(string userId)
         {
@@ -169,9 +164,7 @@ ORDER BY br.borrow_date DESC";
         }
 
         /// <summary>
-        /// 归还图书：定位"借阅中"记录 → 标记为已归还并填归还时间 → books.Remain + 1
-        /// 两步 SQL 共用连接 + 事务，任意异常整批回滚，数据绝对一致。
-        /// 失败情况：账号无效 / 图书编号无效 / 记录不存在或已归还 / DB 写失败
+        /// 归还图书：关记录 → 恢复库存（事务内执行）
         /// </summary>
         public async Task<BorrowResult> ReturnBookAsync(string userId, int bookId)
         {
@@ -185,7 +178,7 @@ ORDER BY br.borrow_date DESC";
                 DateTime now = DateTime.Now;
                 return await _dao.RunInTransactionAsync(async (conn, tran) =>
                 {
-                    // 1. 关闭借阅记录：改状态+填归还时间；WHERE status='借阅中' + FOR UPDATE 防并发双重归还
+                    // 关借阅记录（LIMIT 1 + 行锁防双重归还）
                     const string closeRecordSql = @"UPDATE borrow_records
                                                     SET status = '已归还', return_date = @rdate
                                                     WHERE user_id = @uid AND book_id = @bid AND status = '借阅中'
@@ -201,7 +194,7 @@ ORDER BY br.borrow_date DESC";
                     if (closed == 0)
                         return BorrowResult.Fail("没有找到您借阅中的该书记录，可能已归还或未借阅");
 
-                    // 2. 恢复库存：books.Remain = Remain + 1
+                    // 恢复库存
                     const string restoreStockSql = "UPDATE books SET Remain = Remain + 1 WHERE BookID = @id";
                     using (var restoreCmd = new MySqlCommand(restoreStockSql, conn, tran))
                     {
@@ -217,24 +210,10 @@ ORDER BY br.borrow_date DESC";
                 throw new ServiceException("归还失败: " + ex.Message, ex);
             }
         }
-
-        /// <summary>
-        /// 判断指定用户是否已借某书且未归还（去重依据）
-        /// </summary>
-        private async Task<bool> IsBorrowingAsync(string userId, int bookId)
-        {
-            const string sql = "SELECT COUNT(*) FROM borrow_records WHERE user_id = @uid AND book_id = @bid AND status = '借阅中'";
-            DataTable dt = await _dao.QueryDataTableAsync(sql, new[]
-            {
-                new MySqlParameter("@uid", userId),
-                new MySqlParameter("@bid", bookId)
-            });
-            return Convert.ToInt32(dt.Rows[0][0]) > 0;
-        }
     }
 
     /// <summary>
-    /// 借阅操作结果：成功时 Success=true，失败时携带 Message
+    /// 借阅操作结果
     /// </summary>
     public class BorrowResult
     {

@@ -9,17 +9,13 @@ namespace BMS.Interface.Admin
     public partial class EditBook : Form
     {
         private readonly BookService _bookService = new BookService();
-        private readonly Book _book;  // 原始图书（用其 BookID 作为 UPDATE 的 WHERE，防止误改主键）
+        private readonly Book _book;
 
-        /// <summary>
-        /// 构造函数：接收选中图书实体，填充到对应 TextBox
-        /// </summary>
         public EditBook(Book book)
         {
             InitializeComponent();
             _book = book;
 
-            // 填充数据到控件
             textBox7.Text = book.BookID.ToString();
             textBox1.Text = book.ISBN;
             textBox2.Text = book.Title;
@@ -28,14 +24,10 @@ namespace BMS.Interface.Admin
             textBox5.Text = book.Total.ToString();
             textBox6.Text = book.Remain.ToString();
 
-            // ID 是主键，不允许修改
             textBox7.ReadOnly = true;
             textBox7.BackColor = System.Drawing.Color.LightGray;
         }
 
-        /// <summary>
-        /// 修改图书按钮：校验 → 用文本框当前值构建更新实体 → 异步 UPDATE → 关闭
-        /// </summary>
         private async void BtnSave_Click(object sender, EventArgs e)
         {
             if (string.IsNullOrWhiteSpace(textBox1.Text) ||
@@ -64,7 +56,6 @@ namespace BMS.Interface.Admin
                 return;
             }
 
-            // 用文本框当前值构建更新实体，主键用原始 _book.BookID
             var updated = new Book
             {
                 BookID = _book.BookID,
@@ -82,7 +73,7 @@ namespace BMS.Interface.Admin
                 if (n > 0)
                 {
                     MessageBox.Show("修改成功");
-                    this.Close();  // 修改成功后关闭窗体，返回 Admin2 并自动刷新列表
+                    this.Close();
                 }
                 else
                 {
@@ -99,9 +90,6 @@ namespace BMS.Interface.Admin
             }
         }
 
-        /// <summary>
-        /// 取消按钮：直接关闭窗体
-        /// </summary>
         private void BtnCancel_Click(object sender, EventArgs e)
         {
             this.Close();
